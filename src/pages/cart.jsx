@@ -423,14 +423,16 @@ function CartPage() {
                       </Title>
                     </div>
 
-                    <Button
-                      type="primary"
-                      size="large"
-                      block
-                      icon={<CreditCardOutlined />}
-                    >
-                      Checkout
-                    </Button>
+                    <Link to="/payment">
+                      <Button
+                        type="primary"
+                        size="large"
+                        block
+                        icon={<CreditCardOutlined />}
+                      >
+                        Checkout
+                      </Button>
+                    </Link>
 
                     <Link to="/products">
                       <Button size="large" block>
