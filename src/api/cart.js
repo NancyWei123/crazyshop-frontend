@@ -1,23 +1,80 @@
-const CART_BASE_URL = "/api/cart";
+const API_BASE = "/api/cart";
 
-export async function addToCart(productId, quantity) {
-  const token = localStorage.getItem("token");
+function getToken() {
+  return localStorage.getItem("token");
+}
 
-  const response = await fetch(CART_BASE_URL, {
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${getToken()}`,
+  };
+}
+
+export async function addToCart(productId, quantity = 1) {
+  const res = await fetch(API_BASE, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    headers: authHeaders(),
     body: JSON.stringify({
       productId,
       quantity,
     }),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to add product to cart");
+  if (!res.ok) {
+    throw new Error("Failed to add to cart");
   }
 
-  return response.json();
+  return res.json();
+}
+
+export async function getMyCart() {
+  const res = await fetch(`${API_BASE}/my`, {
+    method: "GET",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to get cart");
+  }
+
+  return res.json();
+}
+
+export async function updateCartItem(cartItemId, quantity) {
+  const res = await fetch(`${API_BASE}/${cartItemId}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      quantity,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to update cart item");
+  }
+
+  return res.json();
+}
+
+export async function removeCartItem(cartItemId) {
+  const res = await fetch(`${API_BASE}/${cartItemId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to remove cart item");
+  }
+}
+
+export async function clearCart() {
+  const res = await fetch(`${API_BASE}/clear`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to clear cart");
+  }
 }
