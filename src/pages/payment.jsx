@@ -1,375 +1,496 @@
-import { useMemo, useState } from "react";
+// src/pages/payment.jsx
+
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Layout,
+  Button,
   Card,
-  Typography,
+  Divider,
   Form,
   Input,
-  Button,
-  Space,
-  Row,
-  Col,
-  Divider,
+  InputNumber,
   message,
   Result,
+  Spin,
+  Typography,
 } from "antd";
 import {
+  ArrowLeftOutlined,
   CreditCardOutlined,
   LockOutlined,
-  ArrowLeftOutlined,
-  CheckCircleOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
-import { Link, useNavigate } from "react-router-dom";
+import { getMyCart } from "../api/cart";
 
-const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 
-function PaymentPage() {
-  const [form] = Form.useForm();
-  const navigate = useNavigate();
+const PAYMENT_BASE_URL = "http://localhost:8084/api/payments";
 
+export default function Payment() {
+  const navigate = useNavigate();
+  const [form] = Form.useForm();
+
+  const [cart, setCart] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [paymentResult, setPaymentResult] = useState(null);
 
-  const cardNumber = Form.useWatch("cardNumber", form);
-
-  const formattedCardPreview = useMemo(() => {
-    if (!cardNumber) return "•••• •••• •••• ••••";
-
-    return cardNumber
-      .replace(/\D/g, "")
-      .slice(0, 16)
-      .replace(/(.{4})/g, "$1 ")
-      .trim()
-      .padEnd(19, "•");
-  }, [cardNumber]);
-
-  function formatCardNumber(value) {
-    return value
-      .replace(/\D/g, "")
-      .slice(0, 16)
-      .replace(/(.{4})/g, "$1 ")
-      .trim();
+  useEffect(() => {
+    async function loadCart() {
+      try {
+        setLoading(true);
+        const data = await getMyCart();
+        setCart(data);
+      } catch (error) {
+        message.error("Failed to load cart: " + error.message);
+      } finally {
+        setLoading(false);
+      }
   }
 
-  function formatExpiry(value) {
-    const numbers = value.replace(/\D/g, "").slice(0, 4);
+  loadCart();
+}, [navigate]);
 
-    if (numbers.length <= 2) {
-      return numbers;
+  function getCartItems() {
+    if (!cart) return [];
+
+    if (Array.isArray(cart)) return cart;
+
+    return cart.items || cart.cartItems || [];
+  }
+
+  function getProductId(item) {
+    return item.productId || item.id;
+  }
+
+  function getProductName(item) {
+    return item.productName || item.name || "Unknown Product";
+  }
+
+  function getQuantity(item) {
+    return item.quantity || 1;
+  }
+
+  function getPrice(item) {
+    return item.price || item.productPrice || 0;
+  }
+
+  function calculateTotal() {
+    const items = getCartItems();
+
+    return items.reduce((sum, item) => {
+      return sum + Number(getPrice(item)) * Number(getQuantity(item));
+    }, 0);
+  }
+
+  async function handlePay(values) {
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+
+    if (!token) {
+      message.warning("Please login first");
+      navigate("/login");
+      return;
     }
 
-    return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
-  }
+    const totalAmount = calculateTotal();
 
-  async function handlePayment(values) {
+    if (totalAmount <= 0) {
+      message.warning("Your cart is empty");
+      return;
+    }
+
     try {
       setPaying(true);
 
-      const payload = {
-        cardNumber: values.cardNumber.replace(/\s/g, ""),
-        expiry: values.expiry,
-        cvv: values.cvv,
-        cardHolderName: values.cardHolderName,
-      };
+      /**
+       * Step 1: create payment
+       *
+       * For now, we use orderId from localStorage.
+       * Later, after you create order from cart, save orderId:
+       * localStorage.setItem("currentOrderId", order.id)
+       */
+      const orderId = Number(localStorage.getItem("currentOrderId")) || 1;
 
-      console.log("Payment payload:", payload);
+      const createPaymentResponse = await fetch(PAYMENT_BASE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-User-Id": userId || "",
+        },
+        body: JSON.stringify({
+          orderId,
+          amount: totalAmount,
+          paymentMethod: "CARD",
+        }),
+      });
 
-      // Later you can replace this with your real backend API:
-      // await createPayment(payload);
+      if (!createPaymentResponse.ok) {
+        throw new Error("Failed to create payment");
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const createdPayment = await createPaymentResponse.json();
 
-      message.success("Payment successful");
+      /**
+       * Step 2: pay
+       */
+      const payResponse = await fetch(`${PAYMENT_BASE_URL}/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-User-Id": userId || "",
+        },
+        body: JSON.stringify({
+          paymentId: createdPayment.id,
+          cardNumber: values.cardNumber,
+          cardHolderName: values.cardHolderName,
+          expiryDate: values.expiryDate,
+          cvv: values.cvv,
+        }),
+      });
+
+      if (!payResponse.ok) {
+        throw new Error("Payment failed");
+      }
+
+      const paidPayment = await payResponse.json();
+
+      setPaymentResult(paidPayment);
       setSuccess(true);
+      message.success("Payment successful");
     } catch (error) {
-      console.error("Payment failed:", error);
-      message.error("Payment failed");
+      message.error(error.message || "Payment failed");
     } finally {
       setPaying(false);
     }
   }
 
-  if (success) {
+  if (loading) {
     return (
-      <Layout style={{ minHeight: "100vh", background: "#f5f7fb" }}>
-        <Content
-          style={{
-            padding: 32,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Card style={{ maxWidth: 620, width: "100%", borderRadius: 20 }}>
-            <Result
-              icon={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
-              title="Payment Successful"
-              subTitle="Your order has been paid successfully."
-              extra={[
-                <Button
-                  type="primary"
-                  key="orders"
-                  onClick={() => navigate("/orders")}
-                >
-                  View Orders
-                </Button>,
-                <Button key="products" onClick={() => navigate("/products")}>
-                  Continue Shopping
-                </Button>,
-              ]}
-            />
-          </Card>
-        </Content>
-      </Layout>
+      <div style={styles.center}>
+        <Spin size="large" />
+      </div>
     );
   }
 
+  if (success) {
+    return (
+      <div style={styles.page}>
+        <Result
+          status="success"
+          title="Payment Successful"
+          subTitle={`Transaction ID: ${
+            paymentResult?.transactionId || "Generated successfully"
+          }`}
+          extra={[
+            <Button type="primary" key="orders" onClick={() => navigate("/orders")}>
+              View Orders
+            </Button>,
+            <Button key="shop" onClick={() => navigate("/")}>
+              Continue Shopping
+            </Button>,
+          ]}
+        />
+      </div>
+    );
+  }
+
+  const items = getCartItems();
+  const totalAmount = calculateTotal();
+
   return (
-    <Layout style={{ minHeight: "100vh", background: "#f5f7fb" }}>
-      <Header
-        style={{
-          height: 72,
-          padding: "0 32px",
-          background: "#ffffff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-        }}
-      >
-        <Space size={12}>
-          <CreditCardOutlined style={{ fontSize: 28, color: "#1677ff" }} />
-          <div>
-            <Title level={3} style={{ margin: 0, lineHeight: 1.1 }}>
-              Payment
+    <div style={styles.page}>
+      <div style={styles.header}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate("/cart")}
+          style={styles.backButton}
+        >
+          Back to Cart
+        </Button>
+
+        <div>
+          <Title level={2} style={{ marginBottom: 4 }}>
+            Payment
+          </Title>
+          <Text type="secondary">Complete your order securely</Text>
+        </div>
+      </div>
+
+      <div style={styles.layout}>
+        <Card style={styles.paymentCard}>
+          <div style={styles.cardTitle}>
+            <CreditCardOutlined style={styles.titleIcon} />
+            <Title level={4} style={{ margin: 0 }}>
+              Card Information
             </Title>
-            <Text type="secondary">Enter your card information</Text>
           </div>
-        </Space>
 
-        <Link to="/cart">
-          <Button icon={<ArrowLeftOutlined />}>Back to Cart</Button>
-        </Link>
-      </Header>
+          <Divider />
 
-      <Content style={{ padding: 32 }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <Row gutter={[24, 24]}>
-            <Col xs={24} lg={10}>
-              <Card
-                style={{
-                  borderRadius: 22,
-                  minHeight: 260,
-                  background:
-                    "linear-gradient(135deg, #1677ff 0%, #722ed1 100%)",
-                  color: "#fff",
-                  boxShadow: "0 16px 40px rgba(22,119,255,0.25)",
-                }}
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handlePay}
+            initialValues={{
+              cardHolderName: "",
+              cardNumber: "",
+              expiryDate: "",
+              cvv: "",
+            }}
+          >
+            <Form.Item
+              label="Card Holder Name"
+              name="cardHolderName"
+              rules={[
+                {
+                  required: true,
+                  message: "Please enter card holder name",
+                },
+              ]}
+            >
+              <Input
+                size="large"
+                placeholder="Nancy Wei"
+                prefix={<CreditCardOutlined />}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Card Number"
+              name="cardNumber"
+              rules={[
+                {
+                  required: true,
+                  message: "Please enter card number",
+                },
+                {
+                  min: 12,
+                  message: "Card number is too short",
+                },
+              ]}
+            >
+              <Input
+                size="large"
+                placeholder="4242 4242 4242 4242"
+                maxLength={19}
+              />
+            </Form.Item>
+
+            <div style={styles.formRow}>
+              <Form.Item
+                label="Expiry Date"
+                name="expiryDate"
+                rules={[
+                  {
+                    required: true,
+                    message: "Enter expiry date",
+                  },
+                ]}
+                style={{ flex: 1 }}
               >
-                <Space
-                  direction="vertical"
-                  size={28}
-                  style={{ width: "100%" }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ color: "rgba(255,255,255,0.85)" }}>
-                      CrazyShop Card
-                    </Text>
-                    <CreditCardOutlined style={{ fontSize: 32 }} />
-                  </div>
+                <Input size="large" placeholder="12/28" />
+              </Form.Item>
 
-                  <Title
-                    level={3}
-                    style={{
-                      color: "#fff",
-                      margin: 0,
-                      letterSpacing: 2,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {formattedCardPreview}
-                  </Title>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <div>
-                      <Text style={{ color: "rgba(255,255,255,0.65)" }}>
-                        Card Holder
-                      </Text>
-                      <br />
-                      <Text strong style={{ color: "#fff" }}>
-                        {form.getFieldValue("cardHolderName") || "YOUR NAME"}
-                      </Text>
-                    </div>
-
-                    <div>
-                      <Text style={{ color: "rgba(255,255,255,0.65)" }}>
-                        Expiry
-                      </Text>
-                      <br />
-                      <Text strong style={{ color: "#fff" }}>
-                        {form.getFieldValue("expiry") || "MM/YY"}
-                      </Text>
-                    </div>
-                  </div>
-                </Space>
-              </Card>
-
-              <Card
-                style={{
-                  marginTop: 24,
-                  borderRadius: 18,
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
-                }}
+              <Form.Item
+                label="CVV"
+                name="cvv"
+                rules={[
+                  {
+                    required: true,
+                    message: "Enter CVV",
+                  },
+                  {
+                    min: 3,
+                    message: "Invalid CVV",
+                  },
+                ]}
+                style={{ flex: 1 }}
               >
-                <Space align="start">
-                  <LockOutlined style={{ fontSize: 22, color: "#52c41a" }} />
+                <Input.Password
+                  size="large"
+                  placeholder="123"
+                  maxLength={4}
+                  prefix={<LockOutlined />}
+                />
+              </Form.Item>
+            </div>
+
+            <Form.Item
+              label="Amount"
+              name="amount"
+              initialValue={totalAmount}
+            >
+              <InputNumber
+                size="large"
+                value={totalAmount}
+                disabled
+                prefix="$"
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+
+            <div style={styles.securityBox}>
+              <SafetyCertificateOutlined />
+              <Text type="secondary">
+                This is a mock payment page for your project. Do not use real card
+                information.
+              </Text>
+            </div>
+
+            <Button
+              type="primary"
+              size="large"
+              htmlType="submit"
+              loading={paying}
+              icon={<CreditCardOutlined />}
+              style={styles.payButton}
+            >
+              Pay ${totalAmount.toFixed(2)}
+            </Button>
+          </Form>
+        </Card>
+
+        <Card style={styles.summaryCard}>
+          <Title level={4}>Order Summary</Title>
+
+          <Divider />
+
+          <div style={styles.summaryList}>
+            {items.length === 0 ? (
+              <Text type="secondary">Your cart is empty</Text>
+            ) : (
+              items.map((item) => (
+                <div key={getProductId(item)} style={styles.summaryItem}>
                   <div>
-                    <Text strong>Secure payment</Text>
+                    <Text strong>{getProductName(item)}</Text>
                     <br />
                     <Text type="secondary">
-                      This is a demo payment page. Do not store real CVV or card
-                      numbers in your database.
+                      Qty: {getQuantity(item)} × ${Number(getPrice(item)).toFixed(2)}
                     </Text>
                   </div>
-                </Space>
-              </Card>
-            </Col>
 
-            <Col xs={24} lg={14}>
-              <Card
-                title="Card Details"
-                style={{
-                  borderRadius: 18,
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
-                }}
-              >
-                <Form
-                  form={form}
-                  layout="vertical"
-                  size="large"
-                  onFinish={handlePayment}
-                  autoComplete="off"
-                >
-                  <Form.Item
-                    label="Card Holder Name"
-                    name="cardHolderName"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please enter card holder name",
-                      },
-                    ]}
-                  >
-                    <Input placeholder="e.g. Nancy Wei" />
-                  </Form.Item>
+                  <Text strong>
+                    ${(Number(getPrice(item)) * Number(getQuantity(item))).toFixed(2)}
+                  </Text>
+                </div>
+              ))
+            )}
+          </div>
 
-                  <Form.Item
-                    label="Card Number"
-                    name="cardNumber"
-                    normalize={formatCardNumber}
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please enter card number",
-                      },
-                      {
-                        validator: (_, value) => {
-                          const card = String(value || "").replace(/\s/g, "");
+          <Divider />
 
-                          if (card.length !== 16) {
-                            return Promise.reject(
-                              new Error("Card number must be 16 digits")
-                            );
-                          }
+          <div style={styles.totalRow}>
+            <Text strong>Total</Text>
+            <Text style={styles.totalPrice}>${totalAmount.toFixed(2)}</Text>
+          </div>
 
-                          return Promise.resolve();
-                        },
-                      },
-                    ]}
-                  >
-                    <Input
-                      prefix={<CreditCardOutlined />}
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                    />
-                  </Form.Item>
-
-                  <Row gutter={16}>
-                    <Col xs={24} md={12}>
-                      <Form.Item
-                        label="Expiry Date"
-                        name="expiry"
-                        normalize={formatExpiry}
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please enter expiry date",
-                          },
-                          {
-                            pattern: /^(0[1-9]|1[0-2])\/\d{2}$/,
-                            message: "Use MM/YY format",
-                          },
-                        ]}
-                      >
-                        <Input placeholder="MM/YY" maxLength={5} />
-                      </Form.Item>
-                    </Col>
-
-                    <Col xs={24} md={12}>
-                      <Form.Item
-                        label="CVV"
-                        name="cvv"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please enter CVV",
-                          },
-                          {
-                            pattern: /^\d{3,4}$/,
-                            message: "CVV must be 3 or 4 digits",
-                          },
-                        ]}
-                      >
-                        <Input.Password placeholder="123" maxLength={4} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-
-                  <Divider />
-
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    block
-                    loading={paying}
-                    icon={<LockOutlined />}
-                    style={{ height: 48 }}
-                  >
-                    Pay Now
-                  </Button>
-                </Form>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      </Content>
-    </Layout>
+          <Button
+            block
+            size="large"
+            onClick={() => navigate("/cart")}
+            style={styles.editCartButton}
+          >
+            Edit Cart
+          </Button>
+        </Card>
+      </div>
+    </div>
   );
 }
 
-export default PaymentPage;
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #f5f7fb 0%, #eef3ff 100%)",
+    padding: "32px",
+  },
+  header: {
+    maxWidth: "1150px",
+    margin: "0 auto 24px",
+    display: "flex",
+    alignItems: "center",
+    gap: "20px",
+  },
+  backButton: {
+    borderRadius: "10px",
+  },
+  layout: {
+    maxWidth: "1150px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns: "1.4fr 0.9fr",
+    gap: "24px",
+  },
+  paymentCard: {
+    borderRadius: "22px",
+    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
+  },
+  summaryCard: {
+    borderRadius: "22px",
+    height: "fit-content",
+    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
+  },
+  cardTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+  titleIcon: {
+    fontSize: "24px",
+    color: "#1677ff",
+  },
+  formRow: {
+    display: "flex",
+    gap: "16px",
+  },
+  securityBox: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "center",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    background: "#f6ffed",
+    border: "1px solid #b7eb8f",
+    marginBottom: "24px",
+  },
+  payButton: {
+    width: "100%",
+    height: "50px",
+    borderRadius: "12px",
+    fontWeight: 700,
+  },
+  summaryList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+  },
+  summaryItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+  },
+  totalRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
+  },
+  totalPrice: {
+    fontSize: "30px",
+    fontWeight: 800,
+    color: "#cf1322",
+  },
+  editCartButton: {
+    borderRadius: "12px",
+  },
+  center: {
+    minHeight: "75vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+};

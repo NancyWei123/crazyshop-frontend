@@ -33,6 +33,7 @@ import {
   removeCartItem,
   clearCart,
 } from "../api/cart";
+import { submitOrder } from "../api/order";
 
 const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -138,6 +139,16 @@ function CartPage() {
       message.error("Failed to clear cart");
     } finally {
       setClearing(false);
+    }
+  }
+  async function submitOrderHandle(cart) {
+    try {
+      await submitOrder(cart);
+      message.success("Order submitted successfully!");
+      await loadCart();
+    } catch (error) {
+      console.error("Failed to submit order:", error);
+      message.error("Failed to submit order");
     }
   }
 
@@ -429,6 +440,7 @@ function CartPage() {
                         size="large"
                         block
                         icon={<CreditCardOutlined />}
+                        onClick={() => submitOrderHandle(cart)}
                       >
                         Checkout
                       </Button>
