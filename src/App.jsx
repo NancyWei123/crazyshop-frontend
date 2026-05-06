@@ -8,6 +8,7 @@ import Order from "./pages/order";
 import Payment from "./pages/payment";
 import User from "./pages/user";
 import Dashboard from "./pages/dashboard";
+import Product from "./pages/product";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -68,6 +69,14 @@ function App() {
         }
       />
 
+      <Route
+        path="/products/:productId"
+        element={
+          <ProtectedRoute>
+            <Product />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/payment"
         element={

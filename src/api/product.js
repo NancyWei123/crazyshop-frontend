@@ -16,3 +16,19 @@ export async function getAllProducts() {
 
   return response.json();
 }
+export async function getProductById(id) {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${PRODUCT_BASE_URL}/${id}`, {
+    method: "GET",
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch products");
+  }
+
+  return response.json();
+}

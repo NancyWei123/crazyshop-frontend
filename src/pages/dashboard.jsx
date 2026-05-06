@@ -22,11 +22,13 @@ import { Link } from "react-router-dom";
 
 import { getAllProducts } from "../api/product";
 import { addToCart } from "../api/cart";
+import { useNavigate } from "react-router-dom";
 
 const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -150,6 +152,7 @@ function Dashboard() {
                     >
                       <Card
                         hoverable
+                        onClick={() => navigate(`/products/${product.id}`)}
                         style={{
                           borderRadius: 16,
                           overflow: "hidden",
