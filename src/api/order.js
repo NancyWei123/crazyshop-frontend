@@ -28,3 +28,21 @@ export async function submitOrder(cart) {
 
   return res.json();
 }
+export async function getMyOrders() {
+  const res = await fetch(`${API_BASE}/my`, {
+    method: "GET",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch orders");
+  }
+  return res.json();
+}
+export async function cancelOrder(orderId) {
+  const res = await fetch(`${API_BASE}/cancel/${orderId}`, {
+    method: "PUT",
+    headers: authHeaders(),
+  });
+  return res;
+}

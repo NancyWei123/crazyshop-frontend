@@ -20,7 +20,6 @@ import {
 import {
   ArrowLeftOutlined,
   DeleteOutlined,
-  ShoppingCartOutlined,
   ClearOutlined,
   ShoppingOutlined,
   CreditCardOutlined,
@@ -275,13 +274,10 @@ function CartPage() {
         }}
       >
         <Space size={12}>
-          <ShoppingCartOutlined style={{ fontSize: 28, color: "#1677ff" }} />
-          <div>
-            <Title level={3} style={{ margin: 0, lineHeight: 1.1 }}>
-              My Cart
-            </Title>
-            <Text type="secondary">Review your selected products</Text>
-          </div>
+          <ShoppingOutlined style={{ fontSize: 28, color: "#1677ff" }} />
+          <Title level={3} style={{ margin: 0 }}>
+            Cart
+          </Title>
         </Space>
 
         <Space>
@@ -289,8 +285,8 @@ function CartPage() {
             <Button icon={<ArrowLeftOutlined />}>Back to Products</Button>
           </Link>
 
-          <Link to="/orders">
-            <Button type="primary">Orders</Button>
+          <Link to="/order">
+            <Button type="primary">Order</Button>
           </Link>
         </Space>
       </Header>
