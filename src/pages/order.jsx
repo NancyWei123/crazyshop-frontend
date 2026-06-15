@@ -239,31 +239,44 @@ function Order() {
         onCancel={() => setDetailOpen(false)}
         width={720}
         footer={[
+          (selectedOrder?.status === "PENDING_PAYMENT"
+    ? [
+        <Button
+          key="cancel"
+          type="primary"
+          danger
+          onClick={async () => {
+            const response = await cancelOrder(selectedOrder.id);
+
+            if (response.status === 200) {
+              message.success("Order cancelled successfully");
+              setDetailOpen(false);
+
+              getMyOrders()
+                .then((data) => {
+                  const orderList = Array.isArray(data)
+                    ? data
+                    : data?.orders || data?.data || [];
+                  setOrders(orderList);
+                })
+                .catch((error) => {
+                  console.error("Failed to refresh orders:", error);
+                  message.error("Failed to refresh orders");
+                });
+            }
+          }}
+        >
+          Cancel Order
+        </Button>,
+
+        <Button key="pay" type="primary" href={`/payment?orderId=${selectedOrder.id}`}>
+          Pay Now
+        </Button>,
+      ]
+    : []),
           <Button key="close" onClick={() => setDetailOpen(false)}>
             Close
-          </Button>,
-          selectedOrder?.status === "PENDING_PAYMENT" && (
-            <Button key="cancel" type="primary" danger
-              onClick={async () => {
-                const response = await cancelOrder(selectedOrder.id);
-                if(response.status === 200){
-                  message.success("Order cancelled successfully");
-                  setDetailOpen(false);
-                  // Refresh orders after cancellation
-                  getMyOrders().then((data) => {
-                    const orderList = Array.isArray(data)
-                      ? data
-                      : data?.orders || data?.data || [];
-                    setOrders(orderList);
-                  }).catch((error) => {
-                    console.error("Failed to refresh orders:", error);
-                    message.error("Failed to refresh orders");
-                  });
-                }
-              }}>
-              Cancel Order
-            </Button>
-          ),
+          </Button>
         ]}
       >
         {selectedOrder && (

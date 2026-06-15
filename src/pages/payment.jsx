@@ -254,7 +254,7 @@ export default function Payment() {
             >
               <Input
                 size="large"
-                placeholder="Nancy Wei"
+                placeholder="Your Name"
                 prefix={<CreditCardOutlined />}
               />
             </Form.Item>
@@ -275,7 +275,7 @@ export default function Payment() {
             >
               <Input
                 size="large"
-                placeholder="4242 4242 4242 4242"
+                placeholder="1234 5678 1234 5678"
                 maxLength={19}
               />
             </Form.Item>

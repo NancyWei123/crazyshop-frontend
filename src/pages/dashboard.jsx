@@ -80,12 +80,14 @@ function Dashboard() {
             CrazyShop
           </Title>
         </Space>
-
+        
         <Space size="middle">
+          <Link to="/shop">
+            <Button icon={<ShoppingOutlined />}>My Shop</Button>
+          </Link>
           <Link to="/cart">
             <Button icon={<ShoppingCartOutlined />}>Cart</Button>
           </Link>
-
           <Link to="/order">
             <Button type="primary">Orders</Button>
           </Link>
