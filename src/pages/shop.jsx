@@ -37,14 +37,9 @@ function Shop() {
     async function loadShopAndProducts() {
       try {
         setLoading(true);
-
         const shopData = await getMyShop();
-        console.log("Shop data:", shopData);
         setShop(shopData);
-
         const productsData = await getProductsInShopById(shopData.id);
-        console.log("Products data:", productsData);
-
         const productList = Array.isArray(productsData)
           ? productsData
           : productsData?.data || [];

@@ -10,6 +10,7 @@ import User from "./pages/user";
 import Dashboard from "./pages/dashboard";
 import Product from "./pages/product";
 import ManageShopPage from "./pages/manageShop";
+import CreateProductPage from "./pages/createProduct";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -118,6 +119,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ManageShopPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/products/create"
+        element={
+          <ProtectedRoute>
+            <CreateProductPage />
           </ProtectedRoute>
         }
       />
