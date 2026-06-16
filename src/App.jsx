@@ -9,6 +9,7 @@ import Payment from "./pages/payment";
 import User from "./pages/user";
 import Dashboard from "./pages/dashboard";
 import Product from "./pages/product";
+import ManageShopPage from "./pages/manageShop";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -110,6 +111,14 @@ function App() {
           <PublicRoute>
             <Register />
           </PublicRoute>
+        }
+      />
+      <Route
+        path="/manage-shop"
+        element={
+          <ProtectedRoute>
+            <ManageShopPage />
+          </ProtectedRoute>
         }
       />
 

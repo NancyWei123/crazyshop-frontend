@@ -145,7 +145,7 @@ function Shop() {
             <Button icon={<ArrowLeftOutlined />}>Back to Products</Button>
           </Link>
 
-          <Link to="/shop/manage">
+          <Link to="/manage-shop">
             <Button type="primary" icon={<SettingOutlined />}>
               Manage Shop
             </Button>

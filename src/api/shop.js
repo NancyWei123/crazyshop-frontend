@@ -33,3 +33,22 @@ export async function getProductsInShopById(shopId) {
   return response.json();
 }
 
+export async function updateShop(shopData) {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${SHOP_BASE_URL}/update`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+    body: JSON.stringify(shopData),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update shop");
+  }
+
+  return response.json();
+}
+
